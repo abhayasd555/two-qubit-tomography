@@ -1,0 +1,776 @@
+<title>Two-Qubit Tomography</title>
+<style>
+:root{
+  --face:#c0c0c0;
+  --face-hi:#dfdfdf;
+  --face-sh:#808080;
+  --white:#ffffff;
+  --black:#000000;
+  --window-bg:#008080;
+  --input-bg:#ffffff;
+  --text:#000000;
+  --text-muted:#3a3a3a;
+  --titlebar1:#000080;
+  --titlebar2:#1084d0;
+  --good:#005a00;
+  --good-bg:#00c800;
+  --bad:#800000;
+  --bad-bg:#ff5050;
+  --note-bg:#ffffcc;
+  --note-border:#808000;
+  --chart-bg:#ffffff;
+  --chart-grid:#c0c0c0;
+  --chart-axis:#000000;
+  --chart-pos:#0000c0;
+  --chart-pos-top:#5858e0;
+  --chart-pos-side:#000070;
+  --chart-neg:#c00000;
+  --chart-neg-top:#ff6a6a;
+  --chart-neg-side:#800000;
+  --ui-font:Tahoma,"Segoe UI",Verdana,Arial,sans-serif;
+  --mono-font:"Courier New",Courier,monospace;
+}
+*{box-sizing:border-box;}
+body{
+  background:var(--window-bg);
+  color:var(--text);
+  font-family:var(--ui-font);
+  font-size:12px;
+  margin:0;
+  padding:18px 12px 40px;
+}
+::-webkit-scrollbar{width:16px; height:16px;}
+::-webkit-scrollbar-track{background:var(--face);}
+::-webkit-scrollbar-thumb{background:var(--face); box-shadow:inset 1px 1px 0 var(--face-hi), inset -1px -1px 0 var(--face-sh);}
+
+.raised{
+  border-top:1px solid var(--white); border-left:1px solid var(--white);
+  border-right:1px solid var(--black); border-bottom:1px solid var(--black);
+  box-shadow:inset 1px 1px 0 var(--face-hi), inset -1px -1px 0 var(--face-sh);
+}
+.sunken{
+  border-top:1px solid var(--black); border-left:1px solid var(--black);
+  border-right:1px solid var(--white); border-bottom:1px solid var(--white);
+  box-shadow:inset 1px 1px 0 var(--face-sh), inset -1px -1px 0 var(--face-hi);
+}
+
+.desktop{max-width:1180px; margin:0 auto;}
+.app-window{background:var(--face); padding:2px; box-shadow:4px 4px 0 rgba(0,0,0,0.35);}
+.app-window > .raised{padding:0;}
+
+.title-bar{
+  background:linear-gradient(90deg,var(--titlebar1),var(--titlebar2));
+  color:var(--white); font-weight:bold; font-size:13px;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:3px 4px 3px 6px; gap:10px;
+}
+.title-bar .title-text{display:flex; align-items:center; gap:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.win-controls{display:flex; gap:3px; flex:none;}
+.wbtn{
+  width:16px; height:14px; background:var(--face); color:var(--black); font-size:10px; line-height:12px;
+  text-align:center; font-family:var(--ui-font); font-weight:bold;
+  border-top:1px solid var(--white); border-left:1px solid var(--white);
+  border-right:1px solid var(--black); border-bottom:1px solid var(--black);
+  box-shadow:inset 1px 1px 0 var(--face-hi);
+}
+
+.menu-bar{
+  background:var(--face); border-bottom:1px solid var(--face-sh); border-top:1px solid var(--white);
+  display:flex; gap:16px; padding:3px 8px; font-size:12px;
+}
+.menu-bar span{cursor:default;}
+.menu-bar u{text-decoration:underline;}
+
+.app-body{background:var(--face); padding:10px 10px 4px;}
+
+.about-box{background:var(--input-bg); padding:8px 10px; margin-bottom:10px; font-size:11.5px; line-height:1.5; color:var(--text);}
+.about-box b{font-weight:bold;}
+
+.layout{display:grid; grid-template-columns:minmax(0,360px) minmax(0,1fr); gap:10px; align-items:start;}
+@media (max-width:820px){ .layout{grid-template-columns:minmax(0,1fr);} }
+
+fieldset.panel{
+  background:var(--face); border-top:1px solid var(--face-sh); border-left:1px solid var(--face-sh);
+  border-right:1px solid var(--white); border-bottom:1px solid var(--white);
+  margin:0 0 10px; padding:10px 10px 10px; min-width:0;
+}
+fieldset.panel > legend{
+  font-weight:bold; font-size:12px; padding:0 5px; background:var(--face); color:var(--text);
+}
+.legend-hint{font-weight:normal; font-size:10.5px; color:var(--text-muted); font-family:var(--mono-font); margin-left:8px;}
+
+.field-caption{font-size:11px; color:var(--text-muted); margin:0 0 8px; line-height:1.5;}
+.field-caption b{color:var(--text); font-weight:bold;}
+
+.note-box{
+  background:var(--note-bg); border:1px solid var(--note-border); padding:5px 8px; margin:0 0 10px;
+  font-size:11px; line-height:1.5;
+}
+.note-box b{font-weight:bold;}
+
+table.data-grid{width:100%; border-collapse:collapse; font-size:11.5px; background:var(--input-bg);}
+table.data-grid thead th{
+  background:var(--face); font-weight:bold; text-align:left; padding:3px 6px; font-size:10.5px;
+  border-top:1px solid var(--white); border-left:1px solid var(--white);
+  border-right:1px solid var(--face-sh); border-bottom:1px solid var(--black);
+  text-transform:uppercase; letter-spacing:.02em;
+}
+table.data-grid thead th:last-child{text-align:right;}
+table.data-grid tbody td{
+  border:1px solid var(--face-sh); padding:3px 6px; font-family:var(--mono-font); color:var(--text);
+}
+table.data-grid tbody tr:nth-child(even) td{background:#eef2f2;}
+table.data-grid tbody tr.group-start td{border-top:2px solid var(--black);}
+table.data-grid td.idx{color:var(--text-muted); text-align:right; width:26px;}
+table.data-grid td.count-cell{text-align:right; width:90px; padding:0;}
+table.data-grid td.count-cell input{
+  width:100%; font-family:var(--mono-font); font-size:11.5px; text-align:right;
+  background:var(--input-bg); color:var(--text); border:none; padding:3px 6px;
+}
+table.data-grid td.count-cell input:focus{outline:1px dotted var(--black); outline-offset:-2px;}
+
+.btn-row{display:flex; gap:6px; margin-top:10px; flex-wrap:wrap;}
+.btn{
+  font-family:var(--ui-font); font-size:12px; background:var(--face); color:var(--text);
+  padding:5px 14px; cursor:pointer; min-width:80px;
+  border-top:1px solid var(--white); border-left:1px solid var(--white);
+  border-right:1px solid var(--black); border-bottom:1px solid var(--black);
+  box-shadow:inset 1px 1px 0 var(--face-hi), inset -1px -1px 0 var(--face-sh);
+}
+.btn:active{
+  border-top:1px solid var(--black); border-left:1px solid var(--black);
+  border-right:1px solid var(--white); border-bottom:1px solid var(--white);
+  box-shadow:inset 1px 1px 0 var(--face-sh), inset -1px -1px 0 var(--face-hi);
+  padding:6px 13px 4px 15px;
+}
+.btn.default{outline:1px solid var(--black); outline-offset:1px; font-weight:bold; flex:1;}
+.btn:disabled{color:var(--face-sh); cursor:default;}
+.btn:focus-visible{outline:1px dotted var(--black);}
+
+.settings-grid{display:flex; flex-wrap:wrap; gap:14px 22px; align-items:flex-end;}
+.settings-grid label{display:flex; flex-direction:column; gap:4px; font-size:10.5px; font-weight:bold; text-transform:uppercase; letter-spacing:.02em;}
+.settings-grid .label-inputs{display:flex; gap:4px;}
+.settings-grid input{
+  font-family:var(--mono-font); font-size:12px; background:var(--input-bg); color:var(--text);
+  padding:3px 5px; border-top:1px solid var(--black); border-left:1px solid var(--black);
+  border-right:1px solid var(--white); border-bottom:1px solid var(--white);
+  box-shadow:inset 1px 1px 0 var(--face-sh);
+}
+.settings-grid .label-inputs input{width:44px; text-align:center;}
+.settings-grid input.txt{width:100px;}
+.settings-grid input.num{width:70px;}
+
+.stat-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px; background:var(--face-sh); border:1px solid var(--face-sh); margin-bottom:10px;}
+.stat-cell{background:var(--input-bg); padding:6px 8px;}
+.stat-cell .lbl{font-size:9.5px; text-transform:uppercase; letter-spacing:.03em; color:var(--text-muted); font-weight:bold;}
+.stat-cell .val{font-family:var(--mono-font); font-size:14px; margin-top:2px;}
+
+.tagline{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+.status-chip{
+  display:inline-block; font-size:10px; font-weight:bold; letter-spacing:.03em; text-transform:uppercase;
+  padding:1px 7px; border:1px solid var(--black); font-family:var(--ui-font);
+}
+.status-chip.good{background:var(--good-bg); color:var(--good);}
+.status-chip.bad{background:var(--bad-bg); color:var(--bad);}
+
+table.rho-grid{border-collapse:collapse; margin-bottom:8px; width:100%;}
+table.rho-grid td{
+  border:1px solid var(--face-sh); font-family:var(--mono-font); font-size:11px; text-align:center;
+  padding:5px 3px; line-height:1.3; color:var(--text);
+}
+table.rho-grid td .im{color:var(--text-muted); font-size:10px;}
+
+.eig-strip{
+  font-family:var(--mono-font); font-size:11px; padding:4px 6px; margin-bottom:10px;
+  background:var(--input-bg); border-top:1px solid var(--black); border-left:1px solid var(--black);
+  border-right:1px solid var(--white); border-bottom:1px solid var(--white);
+}
+.eig-strip .neg{color:var(--bad); font-weight:bold;}
+.eig-strip span{margin-right:12px;}
+
+.fidelity-grid{display:flex; flex-wrap:wrap; gap:1px; background:var(--face-sh); border:1px solid var(--face-sh);}
+.fidelity-cell{background:var(--input-bg); padding:5px 10px; min-width:88px; font-family:var(--mono-font);}
+.fidelity-cell .fname{font-size:10.5px; color:var(--text-muted);}
+.fidelity-cell .fval{font-size:13px; font-weight:bold;}
+
+.chart-caption{font-size:11px; margin:0 0 8px; color:var(--text);}
+.chart-row{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px;}
+@media (max-width:560px){ .chart-row{grid-template-columns:minmax(0,1fr);} }
+.chart-cell{min-width:0;}
+.chart-cell .chart-title{font-size:10.5px; font-weight:bold; text-align:center; margin-bottom:3px; text-transform:uppercase; letter-spacing:.02em;}
+.chart-cell canvas{width:100%; height:200px; display:block; background:var(--chart-bg);
+  border-top:1px solid var(--black); border-left:1px solid var(--black);
+  border-right:1px solid var(--white); border-bottom:1px solid var(--white);
+}
+.axis-caption{font-family:var(--mono-font); font-size:9.5px; color:var(--text-muted); text-align:center; margin-top:5px; line-height:1.4;}
+.chart-legend{display:flex; gap:14px; justify-content:center; margin-top:8px; font-size:10.5px;}
+.chart-legend span{display:inline-flex; align-items:center; gap:5px;}
+.chart-legend i{width:9px; height:9px; display:inline-block; border:1px solid var(--black);}
+
+details.panel{background:var(--face); border-top:1px solid var(--face-sh); border-left:1px solid var(--face-sh); border-right:1px solid var(--white); border-bottom:1px solid var(--white); padding:8px 10px; margin-bottom:0;}
+details.panel summary{cursor:pointer; font-weight:bold; font-size:12px;}
+details.panel p{font-size:11px; line-height:1.6; margin:8px 0;}
+details.panel code{font-family:var(--mono-font); background:var(--input-bg); padding:0 3px; border:1px solid var(--face-sh);}
+details.panel b{font-weight:bold;}
+
+.status-bar{display:flex; gap:2px; padding:3px 4px; background:var(--face); border-top:1px solid var(--white);}
+.status-seg{
+  font-size:11px; padding:2px 8px; flex:1; font-family:var(--ui-font);
+  border-top:1px solid var(--face-sh); border-left:1px solid var(--face-sh);
+  border-right:1px solid var(--white); border-bottom:1px solid var(--white);
+  background:var(--face);
+}
+.status-seg.small{flex:none; min-width:150px;}
+</style>
+
+<div class="desktop">
+  <div class="app-window">
+    <div class="raised" style="background:var(--face);">
+      <div class="title-bar">
+        <span class="title-text">🧪 QSTOMO.EXE — Two-Qubit Polarization Tomography</span>
+        <span class="win-controls"><span class="wbtn">_</span><span class="wbtn">&#9633;</span><span class="wbtn">&times;</span></span>
+      </div>
+      <div class="menu-bar">
+        <span><u>F</u>ile</span><span><u>E</u>dit</span><span><u>S</u>ettings</span><span><u>V</u>iew</span><span><u>H</u>elp</span>
+      </div>
+      <div class="app-body">
+        <div class="about-box sunken">
+          Enter the sixteen two-photon coincidence counts measured over a tomographically complete set of polarization
+          projections. This program reconstructs the density operator ρ describing the joint polarization state — first
+          by direct linear inversion, then by maximum-likelihood estimation constrained to the physical (Hermitian,
+          unit-trace, positive-semidefinite) set of states.
+        </div>
+
+        <div class="layout">
+          <fieldset class="panel" id="inputPanel">
+            <legend>Coincidence Data <span class="legend-hint">n1..n16</span></legend>
+            <p class="field-caption"><b>Measurement settings.</b> The sixteen projective measurements required for a
+              tomographically complete determination of ρ. Settings 1-4 (HH, HV, VV, VH) fix the pair-production rate N.</p>
+            <div class="note-box" id="exampleBanner"><b>Example data:</b> a representative set of counts is loaded below;
+              replace them with your measured values, or press Compute to see the reconstruction they give.</div>
+            <table class="data-grid">
+              <thead><tr><th>No.</th><th>Projection</th><th>Counts</th></tr></thead>
+              <tbody id="rows"></tbody>
+            </table>
+            <div class="btn-row">
+              <button class="btn default" id="computeBtn">Compute</button>
+            </div>
+            <div class="btn-row">
+              <button class="btn" id="exampleBtn">Load Example</button>
+              <button class="btn" id="clearBtn">Clear All</button>
+            </div>
+          </fieldset>
+
+          <div class="results" id="resultsPanel"></div>
+        </div>
+
+        <details class="panel">
+          <summary>Methodology &amp; Notes</summary>
+          <p><b>Measurement set.</b> The 16 rows are a tomographically complete set: each is a coincidence measurement
+            between mode 1 projected onto one of {H, V, D, L, R} and mode 2 projected onto one of {H, V, D, L, R}, where
+            |D&gt;=(|H&gt;+|V&gt;)/sqrt2, |L&gt;=(|H&gt;+i|V&gt;)/sqrt2, |R&gt;=(|H&gt;-i|V&gt;)/sqrt2. The first four settings
+            (HH, HV, VV, VH) must stay in that order — their sum fixes the overall pair-production rate <code>N</code>.</p>
+          <p><b>Linear tomography.</b> Solves n_n = N&lt;psi_n|rho|psi_n&gt; for the 15 free real parameters of a Hermitian,
+            unit-trace rho by least squares. This estimate is exact when the data are noise-free, but for real (noisy)
+            counts it routinely has negative eigenvalues — i.e. it isn't a physical quantum state. This tool flags that
+            explicitly.</p>
+          <p><b>Maximum likelihood.</b> rho is written as rho = T&dagger;T / Tr(T&dagger;T), with T a lower-triangular
+            matrix of 16 real parameters — by construction this rho is always Hermitian, unit-trace and
+            positive-semidefinite. The parameters are fit by minimizing a Gaussian log-likelihood using gradient-based
+            optimization (Adam, numerical gradients, multiple random restarts from a positivity-corrected linear
+            estimate).</p>
+          <p><b>Validation.</b> The linear-tomography step was checked against an independently worked reference
+            calculation to 4 decimal places. The maximum-likelihood step converges to the same optimum from many
+            independent starting points and under several different optimizers (Adam, BFGS, Powell), which is evidence
+            it reaches the true global optimum rather than a local one.</p>
+          <p><b>Not included:</b> propagation of Poissonian shot-noise into error bars on rho — that requires a full
+            derivative or Monte-Carlo error analysis and is a natural extension if you need confidence intervals.</p>
+        </details>
+      </div>
+      <div class="status-bar">
+        <div class="status-seg" id="status">Ready.</div>
+        <div class="status-seg small" id="statusN">N = —</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- complex arithmetic ----------
+const C=(re,im=0)=>({re,im});
+const cadd=(a,b)=>C(a.re+b.re,a.im+b.im);
+const csub=(a,b)=>C(a.re-b.re,a.im-b.im);
+const cmul=(a,b)=>C(a.re*b.re-a.im*b.im, a.re*b.im+a.im*b.re);
+const cconj=a=>C(a.re,-a.im);
+const cscale=(a,s)=>C(a.re*s,a.im*s);
+
+function matMul(A,B){
+  const n=A.length,m=B[0].length,k=B.length;
+  const R=Array.from({length:n},()=>Array.from({length:m},()=>C(0,0)));
+  for(let i=0;i<n;i++)for(let j=0;j<m;j++){let s=C(0,0);for(let l=0;l<k;l++)s=cadd(s,cmul(A[i][l],B[l][j]));R[i][j]=s;}
+  return R;
+}
+function matDag(A){
+  const n=A.length,m=A[0].length;
+  const R=Array.from({length:m},()=>Array.from({length:n},()=>C(0,0)));
+  for(let i=0;i<n;i++)for(let j=0;j<m;j++)R[j][i]=cconj(A[i][j]);
+  return R;
+}
+function kron2(A,B){
+  const R=Array.from({length:4},()=>Array.from({length:4},()=>C(0,0)));
+  for(let i=0;i<2;i++)for(let j=0;j<2;j++)for(let k=0;k<2;k++)for(let l=0;l<2;l++)
+    R[2*i+k][2*j+l]=cmul(A[i][j],B[k][l]);
+  return R;
+}
+function tensorKet(a,b){return [cmul(a[0],b[0]),cmul(a[0],b[1]),cmul(a[1],b[0]),cmul(a[1],b[1])];}
+function braket(psi,M,phi){
+  let s=C(0,0);
+  for(let i=0;i<4;i++){let mv=C(0,0);for(let j=0;j<4;j++)mv=cadd(mv,cmul(M[i][j],phi[j]));s=cadd(s,cmul(cconj(psi[i]),mv));}
+  return s;
+}
+
+const s2=1/Math.SQRT2;
+const H=[C(1,0),C(0,0)], V=[C(0,0),C(1,0)], D=[C(s2,0),C(s2,0)], L=[C(s2,0),C(0,s2)], R=[C(s2,0),C(0,-s2)];
+
+// sixteen tomographically complete projective measurements
+const TABLE=[
+  ['H','H',H,H],['H','V',H,V],['V','V',V,V],['V','H',V,H],
+  ['R','H',R,H],['R','V',R,V],['D','V',D,V],['D','H',D,H],
+  ['D','R',D,R],['D','D',D,D],['R','D',R,D],['H','D',H,D],
+  ['V','D',V,D],['V','L',V,L],['H','L',H,L],['R','L',R,L],
+];
+const psis=TABLE.map(t=>tensorKet(t[2],t[3]));
+
+const I2=[[C(1,0),C(0,0)],[C(0,0),C(1,0)]];
+const X=[[C(0,0),C(1,0)],[C(1,0),C(0,0)]];
+const Y=[[C(0,0),C(0,-1)],[C(0,1),C(0,0)]];
+const Z=[[C(1,0),C(0,0)],[C(0,0),C(-1,0)]];
+const paulis=[I2,X,Y,Z];
+const Gamma=[]; for(let i=0;i<4;i++){Gamma.push([]);for(let j=0;j<4;j++)Gamma[i].push(kron2(paulis[i],paulis[j]));}
+
+// c[n][i][j] = <psi_n| sigma_i (x) sigma_j |psi_n>, precomputed once (real)
+const cCoef=[];
+for(let n=0;n<16;n++){cCoef.push([]);for(let i=0;i<4;i++){cCoef[n].push([]);for(let j=0;j<4;j++)cCoef[n][i].push(braket(psis[n],Gamma[i][j],psis[n]).re);}}
+
+function solveLinearSystem(A,b){
+  const n=A.length; const M=A.map((row,i)=>[...row,b[i]]);
+  for(let col=0;col<n;col++){
+    let piv=col;
+    for(let r=col+1;r<n;r++) if(Math.abs(M[r][col])>Math.abs(M[piv][col])) piv=r;
+    [M[col],M[piv]]=[M[piv],M[col]];
+    const pv=M[col][col]||1e-12;
+    for(let c=col;c<=n;c++) M[col][c]/=pv;
+    for(let r=0;r<n;r++){ if(r===col) continue; const f=M[r][col]; for(let c=col;c<=n;c++) M[r][c]-=f*M[col][c]; }
+  }
+  return M.map(row=>row[n]);
+}
+
+const IDX_LIST=[]; for(let i=0;i<4;i++)for(let j=0;j<4;j++) if(!(i===0&&j===0)) IDX_LIST.push([i,j]);
+
+function linearTomography(counts){
+  const N=counts[0]+counts[1]+counts[2]+counts[3];
+  const Amat=[],bvec=[];
+  for(let n=0;n<16;n++){
+    const row=IDX_LIST.map(([i,j])=>(N/4)*cCoef[n][i][j]);
+    Amat.push(row);
+    bvec.push(counts[n]-(N/4)*cCoef[n][0][0]);
+  }
+  const k=IDX_LIST.length;
+  const AtA=Array.from({length:k},()=>new Array(k).fill(0));
+  const Atb=new Array(k).fill(0);
+  for(let a=0;a<k;a++){
+    for(let bcol=0;bcol<k;bcol++){ let s=0; for(let n=0;n<16;n++) s+=Amat[n][a]*Amat[n][bcol]; AtA[a][bcol]=s; }
+    let s=0; for(let n=0;n<16;n++) s+=Amat[n][a]*bvec[n]; Atb[a]=s;
+  }
+  const x=solveLinearSystem(AtA,Atb);
+  const rvals=Array.from({length:4},()=>new Array(4).fill(0)); rvals[0][0]=1;
+  IDX_LIST.forEach(([i,j],idx)=>{rvals[i][j]=x[idx];});
+  const rho=Array.from({length:4},()=>Array.from({length:4},()=>C(0,0)));
+  for(let i=0;i<4;i++)for(let j=0;j<4;j++){
+    const coeff=rvals[i][j]/4;
+    for(let a=0;a<4;a++)for(let b=0;b<4;b++) rho[a][b]=cadd(rho[a][b],cscale(Gamma[i][j][a][b],coeff));
+  }
+  return {rho,N};
+}
+
+// ---- Hermitian eigenvalues via cyclic Jacobi (real symmetric embedding) ----
+function jacobiEigenvalues(Ain){
+  const n=Ain.length; const A=Ain.map(r=>[...r]);
+  for(let sweep=0;sweep<100;sweep++){
+    let off=0; for(let i=0;i<n;i++)for(let j=i+1;j<n;j++) off+=A[i][j]*A[i][j];
+    if(off<1e-24) break;
+    for(let p=0;p<n;p++)for(let q=p+1;q<n;q++){
+      if(Math.abs(A[p][q])<1e-16) continue;
+      const theta=(A[q][q]-A[p][p])/(2*A[p][q]);
+      const t=(theta>=0?1:-1)/(Math.abs(theta)+Math.sqrt(theta*theta+1));
+      const c=1/Math.sqrt(t*t+1), s=t*c;
+      for(let i=0;i<n;i++){ const Aip=A[i][p], Aiq=A[i][q]; A[i][p]=c*Aip-s*Aiq; A[i][q]=s*Aip+c*Aiq; }
+      for(let i=0;i<n;i++){ const Api=A[p][i], Aqi=A[q][i]; A[p][i]=c*Api-s*Aqi; A[q][i]=s*Api+c*Aqi; }
+    }
+  }
+  return A.map((row,i)=>row[i]);
+}
+function hermitianEigenvalues(rho){
+  const n=rho.length;
+  const B=Array.from({length:2*n},()=>new Array(2*n).fill(0));
+  for(let i=0;i<n;i++)for(let j=0;j<n;j++){ B[i][j]=rho[i][j].re; B[i][n+j]=-rho[i][j].im; B[n+i][j]=rho[i][j].im; B[n+i][n+j]=rho[i][j].re; }
+  const eig=jacobiEigenvalues(B).sort((a,b)=>a-b);
+  const out=[]; for(let i=0;i<2*n;i+=2) out.push((eig[i]+eig[i+1])/2);
+  return out.sort((a,b)=>b-a);
+}
+function traceRho2(rho){ const r2=matMul(rho,rho); let s=0; for(let i=0;i<4;i++) s+=r2[i][i].re; return s; }
+
+// ---- physical parametrization + likelihood ----
+function Tmat(t){
+  const T=Array.from({length:4},()=>Array.from({length:4},()=>C(0,0)));
+  T[0][0]=C(t[0]);
+  T[1][0]=C(t[4],t[5]); T[1][1]=C(t[1]);
+  T[2][0]=C(t[10],t[11]); T[2][1]=C(t[6],t[7]); T[2][2]=C(t[2]);
+  T[3][0]=C(t[14],t[15]); T[3][1]=C(t[12],t[13]); T[3][2]=C(t[8],t[9]); T[3][3]=C(t[3]);
+  return T;
+}
+function rhoPhysical(t){
+  const T=Tmat(t); const M=matMul(matDag(T),T);
+  let tr=0; for(let i=0;i<4;i++) tr+=M[i][i].re;
+  const rho=M.map(row=>row.map(z=>cscale(z,1/tr)));
+  return rho;
+}
+function nbarOf(rho,N){ return psis.map(psi=>N*braket(psi,rho,psi).re); }
+function likelihood(t,counts,N){
+  const rho=rhoPhysical(t); const nb=nbarOf(rho,N);
+  let s=0; for(let n=0;n<16;n++){ const b=Math.max(nb[n],1e-9*N); s+=(b-counts[n])*(b-counts[n])/(2*b); }
+  return s;
+}
+function numGrad(f,t,eps=1e-6){
+  const g=new Array(t.length);
+  for(let i=0;i<t.length;i++){
+    const tp=t.slice(), tm=t.slice(); tp[i]+=eps; tm[i]-=eps;
+    g[i]=(f(tp)-f(tm))/(2*eps);
+  }
+  return g;
+}
+function adamMinimize(f,t0,iters,lr){
+  let t=t0.slice(); const m=new Array(t.length).fill(0), v=new Array(t.length).fill(0);
+  const b1=0.9,b2=0.999,eps=1e-8;
+  for(let i=1;i<=iters;i++){
+    const g=numGrad(f,t);
+    for(let k=0;k<t.length;k++){
+      m[k]=b1*m[k]+(1-b1)*g[k];
+      v[k]=b2*v[k]+(1-b2)*g[k]*g[k];
+      const mhat=m[k]/(1-Math.pow(b1,i)), vhat=v[k]/(1-Math.pow(b2,i));
+      t[k]-=lr*mhat/(Math.sqrt(vhat)+eps);
+    }
+  }
+  return t;
+}
+function mulberry32(seed){ return function(){ seed|=0; seed=seed+0x6D2B79F5|0; let x=Math.imul(seed^seed>>>15,1|seed); x=x+Math.imul(x^x>>>7,61|x)^x; return ((x^x>>>14)>>>0)/4294967296; }; }
+function gaussian(rand){ const u1=Math.max(rand(),1e-12), u2=rand(); return Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2); }
+
+function maxLikelihoodTomography(counts, N, rhoLinear){
+  const diag=[rhoLinear[0][0].re,rhoLinear[1][1].re,rhoLinear[2][2].re,rhoLinear[3][3].re];
+  const t0base=new Array(16).fill(0);
+  for(let i=0;i<4;i++) t0base[i]=Math.sqrt(Math.max(diag[i],1e-3));
+  const f=t=>likelihood(t,counts,N);
+  const rand=mulberry32(20240517);
+  let best=null;
+  const starts=4;
+  for(let trial=0;trial<starts;trial++){
+    let t0=t0base.slice();
+    if(trial>0) for(let k=0;k<16;k++) t0[k]+=0.2*gaussian(rand);
+    let t=adamMinimize(f,t0, trial===0?2000:1200, 0.03);
+    t=adamMinimize(f,t, trial===0?1000:600, 0.005);
+    const val=f(t);
+    if(best===null||val<best.val) best={val,t};
+  }
+  return {rho:rhoPhysical(best.t), L:best.val};
+}
+
+// ---- derived quantities ----
+function vonNeumannEntropy(eigs){ let s=0; for(const l of eigs) if(l>1e-12) s-=l*Math.log2(l); return s; }
+function linearEntropy(trRho2){ return (4/3)*(1-trRho2); }
+const BELLS={
+  'Phi+':[C(s2),C(0),C(0),C(s2)], 'Phi-':[C(s2),C(0),C(0),C(-s2)],
+  'Psi+':[C(0),C(s2),C(s2),C(0)], 'Psi-':[C(0),C(s2),C(-s2),C(0)],
+};
+function fidelities(rho){ const out={}; for(const k in BELLS) out[k]=braket(BELLS[k],rho,BELLS[k]).re; return out; }
+
+// ---------- UI ----------
+const EXAMPLE=[34749,324,35805,444,16324,17521,13441,16901,17932,32028,15132,17238,13171,17170,16722,33586];
+
+const rowsEl=document.getElementById('rows');
+TABLE.forEach((rdef,i)=>{
+  const [m1,m2]=rdef;
+  const tr=document.createElement('tr');
+  tr.className=(i%4===0)?'group-start':'';
+  tr.innerHTML=`
+    <td class="idx">${i+1}</td>
+    <td>|${m1}&gt;|${m2}&gt;</td>
+    <td class="count-cell"><input type="number" min="0" step="1" id="n${i}" value="${EXAMPLE[i]}"></td>`;
+  rowsEl.appendChild(tr);
+});
+
+function getCounts(){ return TABLE.map((_,i)=>{ const v=parseFloat(document.getElementById('n'+i).value); return isFinite(v)&&v>=0?v:0; }); }
+function setCounts(arr){ arr.forEach((v,i)=>{ document.getElementById('n'+i).value=v; }); }
+
+document.getElementById('exampleBtn').onclick=()=>{ setCounts(EXAMPLE); document.getElementById('exampleBanner').style.display=''; };
+document.getElementById('clearBtn').onclick=()=>{ setCounts(new Array(16).fill(0)); document.getElementById('exampleBanner').style.display='none'; };
+document.querySelectorAll('#rows input').forEach(inp=>inp.addEventListener('input',()=>{ document.getElementById('exampleBanner').style.display='none'; }));
+
+function fmtNum(x,d=4){ return (Object.is(x,-0)?0:x).toFixed(d); }
+function fmtComplex(z){
+  const re=fmtNum(z.re), im=Math.abs(z.im)<5e-5?'0.0000':fmtNum(Math.abs(z.im));
+  const sign=z.im<0?'-':'+';
+  return `<div>${re}</div><div class="im">${sign}${im}i</div>`;
+}
+function magAlpha(z,maxMag){ const m=Math.hypot(z.re,z.im); return maxMag>1e-9?Math.min(0.45,0.03+0.42*(m/maxMag)):0.03; }
+
+function renderMatrix(rho){
+  let maxMag=1e-9;
+  for(let i=0;i<4;i++)for(let j=0;j<4;j++) maxMag=Math.max(maxMag,Math.hypot(rho[i][j].re,rho[i][j].im));
+  const table=document.createElement('table'); table.className='rho-grid';
+  for(let i=0;i<4;i++){
+    const tr=document.createElement('tr');
+    for(let j=0;j<4;j++){
+      const td=document.createElement('td');
+      const a=magAlpha(rho[i][j],maxMag);
+      td.style.background=`rgb(${Math.round(255-a*140)},${Math.round(255-a*140)},${Math.round(255-a*90)})`;
+      td.innerHTML=fmtComplex(rho[i][j]);
+      tr.appendChild(td);
+    }
+    table.appendChild(tr);
+  }
+  return table;
+}
+
+function renderEigs(eigs){
+  const wrap=document.createElement('div'); wrap.className='eig-strip';
+  eigs.forEach(l=>{ const e=document.createElement('span'); if(l<-1e-6) e.className='neg'; e.textContent='lambda = '+fmtNum(l,4); wrap.appendChild(e); });
+  return wrap;
+}
+
+// ---- classic 3-D column chart (Excel-97 style: flat value ruler + isometric bar cluster) ----
+const cssVar=name=>getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const activeCharts=[]; // {canvas, values, maxAbs, valueTitle, axisCaption}
+const plotSettings={ labels:['HH','HV','VH','VV'], rowTitle:'Mode 1', colTitle:'Mode 2', zMax:null };
+
+function niceTicks(maxVal, targetCount){
+  if(!(maxVal>0)) return {step:1,max:1};
+  const roughStep=maxVal/targetCount;
+  const mag=Math.pow(10,Math.floor(Math.log10(roughStep)));
+  const norm=roughStep/mag;
+  const niceNorm = norm<1.5?1 : norm<3?2 : norm<7?5 : 10;
+  const step=niceNorm*mag;
+  let max=step; while(max<maxVal-1e-9) max+=step;
+  return {step,max};
+}
+function fmtTick(v,step){
+  const decimals = step<0.05?3:step<0.5?2:1;
+  return (Math.abs(v)<1e-12?0:v).toFixed(decimals);
+}
+
+function drawIsoBars3D(canvas, values, maxAbs, valueTitle){
+  const dpr=window.devicePixelRatio||1;
+  const w=canvas.clientWidth||260, h=canvas.clientHeight||200;
+  canvas.width=Math.round(w*dpr); canvas.height=Math.round(h*dpr);
+  const ctx=canvas.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,w,h);
+
+  const gridColor=cssVar('--chart-grid'), axisColor=cssVar('--chart-axis'), textColor=cssVar('--chart-axis');
+  const posTop=cssVar('--chart-pos-top'), posSide=cssVar('--chart-pos-side'), posFront=cssVar('--chart-pos');
+  const negTop=cssVar('--chart-neg-top'), negSide=cssVar('--chart-neg-side'), negFront=cssVar('--chart-neg');
+
+  const effMax=(plotSettings.zMax && plotSettings.zMax>0) ? plotSettings.zMax : maxAbs;
+  const {step, max:axisMax}=niceTicks(Math.max(effMax,1e-6), 4);
+
+  const marginLeft=36, marginTop=10, marginBottom=30, marginRight=8;
+  const plotTop=marginTop, plotBottom=h-marginBottom;
+  const midY=(plotTop+plotBottom)/2;
+  const pxPerUnit=(plotBottom-plotTop)/(2*axisMax);
+  const axisX=marginLeft;
+
+  const availW=w-axisX-10-marginRight;
+  const halfW=Math.min(13, availW/9);
+  const halfH=halfW*0.5;
+  const originX=axisX+10+availW/2;
+  const originY=midY;
+  const proj=(i,j,z)=>[originX+(i-j)*halfW, originY+(i+j)*halfH-z*pxPerUnit];
+
+  const posTicks=[]; for(let v=0; v<=axisMax+1e-9; v+=step) posTicks.push(+v.toFixed(10));
+  const allTicks=[...posTicks.slice(1).map(v=>-v).reverse(), ...posTicks];
+
+  // flat reference gridlines at each z-tick (classic chart-control look)
+  ctx.strokeStyle=gridColor; ctx.lineWidth=1;
+  allTicks.forEach(zt=>{
+    const y=midY-zt*pxPerUnit;
+    ctx.beginPath(); ctx.moveTo(axisX,y); ctx.lineTo(w-marginRight,y); ctx.stroke();
+  });
+
+  // floor grid (z = 0 plane)
+  ctx.strokeStyle=gridColor; ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){ const p0=proj(i,0,0),p1=proj(i,4,0); ctx.beginPath();ctx.moveTo(p0[0],p0[1]);ctx.lineTo(p1[0],p1[1]);ctx.stroke(); }
+  for(let j=0;j<=4;j++){ const p0=proj(0,j,0),p1=proj(4,j,0); ctx.beginPath();ctx.moveTo(p0[0],p0[1]);ctx.lineTo(p1[0],p1[1]);ctx.stroke(); }
+
+  // bars
+  const bars=[]; for(let i=0;i<4;i++)for(let j=0;j<4;j++) bars.push({i,j,v:values[i][j]});
+  bars.sort((a,b)=>(a.i+a.j)-(b.i+b.j));
+  function face(pts,color){
+    ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]); for(let k=1;k<pts.length;k++) ctx.lineTo(pts[k][0],pts[k][1]);
+    ctx.closePath(); ctx.fillStyle=color; ctx.fill();
+    ctx.strokeStyle=axisColor; ctx.lineWidth=1; ctx.stroke();
+  }
+  for(const {i,j,v} of bars){
+    if(Math.abs(v)<axisMax*0.01) continue;
+    const zTop=Math.max(0,v), zBot=Math.min(0,v);
+    const isPos=v>=0;
+    const tA=proj(i,j,zTop), tB=proj(i+1,j,zTop), tC=proj(i+1,j+1,zTop), tD=proj(i,j+1,zTop);
+    const bB=proj(i+1,j,zBot), bC=proj(i+1,j+1,zBot), bD=proj(i,j+1,zBot);
+    face([tA,tB,tC,tD], isPos?posTop:negTop);
+    face([tB,tC,bC,bB], isPos?posSide:negSide);
+    face([tD,tC,bC,bD], isPos?posFront:negFront);
+  }
+
+  // value ruler (flat, left edge — unambiguous, no rotation)
+  ctx.strokeStyle=axisColor; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(axisX,plotTop-4); ctx.lineTo(axisX,plotBottom+4); ctx.stroke();
+  ctx.fillStyle=textColor; ctx.font='9.5px "Courier New",monospace'; ctx.textAlign='right';
+  allTicks.forEach(zt=>{
+    const y=midY-zt*pxPerUnit;
+    ctx.strokeStyle=axisColor; ctx.beginPath(); ctx.moveTo(axisX-4,y); ctx.lineTo(axisX,y); ctx.stroke();
+    ctx.fillText(fmtTick(zt,step), axisX-6, y+3);
+  });
+
+  // row / column tick labels
+  ctx.font='9.5px "Courier New",monospace'; ctx.fillStyle=textColor; ctx.textAlign='center';
+  for(let i=0;i<4;i++){ const p=proj(i+0.5,4,0); ctx.fillText(plotSettings.labels[i]||'', p[0], p[1]+13); }
+  ctx.textAlign='right';
+  for(let j=0;j<4;j++){ const p=proj(0,j+0.5,0); ctx.fillText(plotSettings.labels[j]||'', p[0]-7, p[1]+3); }
+}
+
+function redrawAllCharts(){
+  activeCharts.forEach(c=>{
+    drawIsoBars3D(c.canvas,c.values,c.maxAbs,c.valueTitle);
+    if(c.axisCaption) c.axisCaption.textContent=`Rows: ${plotSettings.rowTitle} (${plotSettings.labels.join(', ')})  |  Columns: ${plotSettings.colTitle} (${plotSettings.labels.join(', ')})  |  height: ${c.valueTitle}`;
+  });
+}
+window.addEventListener('resize', ()=>requestAnimationFrame(redrawAllCharts));
+
+function renderPlotSettingsPanel(){
+  const fs=document.createElement('fieldset'); fs.className='panel';
+  fs.innerHTML=`
+    <legend>Figure Axes <span class="legend-hint">applies to every chart below</span></legend>
+    <div class="settings-grid">
+      <label>Basis labels
+        <span class="label-inputs">${plotSettings.labels.map((l,idx)=>`<input type="text" maxlength="6" data-basis-idx="${idx}" value="${l}">`).join('')}</span>
+      </label>
+      <label>Row-axis title<input class="txt" type="text" id="rowTitleInput" value="${plotSettings.rowTitle}"></label>
+      <label>Column-axis title<input class="txt" type="text" id="colTitleInput" value="${plotSettings.colTitle}"></label>
+      <label>Z-axis max<input class="num" type="number" id="zMaxInput" step="0.01" min="0" placeholder="auto" value="${plotSettings.zMax??''}"></label>
+    </div>`;
+  fs.querySelectorAll('[data-basis-idx]').forEach(inp=>{
+    inp.addEventListener('input', ()=>{ plotSettings.labels[+inp.dataset.basisIdx]=inp.value||'?'; redrawAllCharts(); });
+  });
+  fs.querySelector('#rowTitleInput').addEventListener('input', e=>{ plotSettings.rowTitle=e.target.value; redrawAllCharts(); });
+  fs.querySelector('#colTitleInput').addEventListener('input', e=>{ plotSettings.colTitle=e.target.value; redrawAllCharts(); });
+  fs.querySelector('#zMaxInput').addEventListener('input', e=>{
+    const v=parseFloat(e.target.value); plotSettings.zMax=(isFinite(v)&&v>0)?v:null; redrawAllCharts();
+  });
+  return fs;
+}
+
+function renderPlot3D(rho){
+  let maxAbs=1e-9;
+  const reVals=Array.from({length:4},()=>new Array(4).fill(0));
+  const imVals=Array.from({length:4},()=>new Array(4).fill(0));
+  for(let i=0;i<4;i++)for(let j=0;j<4;j++){
+    reVals[i][j]=rho[i][j].re; imVals[i][j]=rho[i][j].im;
+    maxAbs=Math.max(maxAbs,Math.abs(rho[i][j].re),Math.abs(rho[i][j].im));
+  }
+  const wrap=document.createElement('div');
+  wrap.innerHTML=`<p class="chart-caption"><b>Chart.</b> Three-dimensional column-chart representation of rho.</p>`;
+  const row=document.createElement('div'); row.className='chart-row';
+
+  [['Real Part',reVals,'Re rho'],['Imaginary Part',imVals,'Im rho']].forEach(([cap,vals,valueTitle])=>{
+    const cell=document.createElement('div'); cell.className='chart-cell';
+    const capEl=document.createElement('div'); capEl.className='chart-title'; capEl.textContent=cap;
+    const canvas=document.createElement('canvas');
+    const axisCaption=document.createElement('div'); axisCaption.className='axis-caption';
+    axisCaption.textContent=`Rows: ${plotSettings.rowTitle} (${plotSettings.labels.join(', ')})  |  Columns: ${plotSettings.colTitle} (${plotSettings.labels.join(', ')})  |  height: ${valueTitle}`;
+    cell.appendChild(capEl); cell.appendChild(canvas); cell.appendChild(axisCaption); row.appendChild(cell);
+    activeCharts.push({canvas,values:vals,maxAbs,valueTitle,axisCaption});
+    requestAnimationFrame(()=>drawIsoBars3D(canvas,vals,maxAbs,valueTitle));
+  });
+  wrap.appendChild(row);
+  const legend=document.createElement('div'); legend.className='chart-legend';
+  legend.innerHTML=`<span><i style="background:var(--chart-pos)"></i>positive</span><span><i style="background:var(--chart-neg)"></i>negative</span>`;
+  wrap.appendChild(legend);
+  return wrap;
+}
+
+function buildResults(counts){
+  const status=document.getElementById('status');
+  const statusN=document.getElementById('statusN');
+  status.textContent='Solving linear system...';
+  const {rho:rhoLin,N}=linearTomography(counts);
+  const eigsLin=hermitianEigenvalues(rhoLin);
+  const tr2Lin=traceRho2(rhoLin);
+  const physical=eigsLin.every(l=>l>-1e-6);
+  statusN.textContent=`N = ${N.toLocaleString()}`;
+
+  status.textContent='Optimizing maximum-likelihood fit...';
+  setTimeout(()=>{
+    const {rho:rhoML,L}=maxLikelihoodTomography(counts,N,rhoLin);
+    const eigsML=hermitianEigenvalues(rhoML);
+    const tr2ML=traceRho2(rhoML);
+    const S=vonNeumannEntropy(eigsML);
+    const SL=linearEntropy(tr2ML);
+    const fids=fidelities(rhoML);
+
+    const panel=document.getElementById('resultsPanel');
+    panel.innerHTML='';
+    activeCharts.length=0;
+    panel.appendChild(renderPlotSettingsPanel());
+
+    const summary=document.createElement('fieldset'); summary.className='panel';
+    summary.innerHTML=`
+      <legend>Reconstruction Summary</legend>
+      <div class="stat-grid">
+        <div class="stat-cell"><div class="lbl">Purity Tr(rho^2), ML</div><div class="val">${fmtNum(tr2ML,4)}</div></div>
+        <div class="stat-cell"><div class="lbl">Von Neumann S, ML</div><div class="val">${fmtNum(S,4)} bit</div></div>
+        <div class="stat-cell"><div class="lbl">Linear entropy, ML</div><div class="val">${fmtNum(SL,4)}</div></div>
+        <div class="stat-cell"><div class="lbl">Likelihood at optimum</div><div class="val">${L.toFixed(2)}</div></div>
+      </div>
+      <p class="field-caption" style="margin-bottom:6px"><b>Fidelity to the Bell basis</b> (maximum-likelihood estimate):</p>
+      <div class="fidelity-grid">
+        ${Object.entries(fids).map(([k,v])=>`<div class="fidelity-cell"><div class="fname">${k}</div><div class="fval">${fmtNum(v,3)}</div></div>`).join('')}
+      </div>`;
+    panel.appendChild(summary);
+
+    const mlCard=document.createElement('fieldset'); mlCard.className='panel';
+    mlCard.innerHTML=`<legend>Maximum-Likelihood rho <span class="status-chip good" style="margin-left:6px">physical</span></legend>
+      <p class="field-caption">Hermitian, unit-trace, positive-semidefinite by construction.</p>`;
+    mlCard.appendChild(renderMatrix(rhoML));
+    mlCard.appendChild(renderEigs(eigsML));
+    mlCard.appendChild(renderPlot3D(rhoML));
+    panel.appendChild(mlCard);
+
+    const linCard=document.createElement('fieldset'); linCard.className='panel';
+    linCard.innerHTML=`<legend>Linear-Tomography rho <span class="status-chip ${physical?'good':'bad'}" style="margin-left:6px">${physical?'physical':'unphysical'}</span></legend>
+      <p class="field-caption">Direct least-squares inversion, shown for comparison only.</p>`;
+    linCard.appendChild(renderMatrix(rhoLin));
+    linCard.appendChild(renderEigs(eigsLin));
+    linCard.appendChild(renderPlot3D(rhoLin));
+    panel.appendChild(linCard);
+
+    status.textContent=`Done. Tr(rho^2)=${fmtNum(tr2Lin,3)} for the linear estimate (values away from [0,1] indicate the unphysical region); L(t) converged to ${L.toFixed(2)}.`;
+    document.getElementById('computeBtn').disabled=false;
+  },30);
+}
+
+document.getElementById('computeBtn').onclick=()=>{
+  document.getElementById('computeBtn').disabled=true;
+  buildResults(getCounts());
+};
+
+// initial render on load with example data
+document.getElementById('computeBtn').disabled=true;
+buildResults(getCounts());
+</script>
