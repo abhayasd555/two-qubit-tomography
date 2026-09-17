@@ -64,6 +64,32 @@ open index.html      # macOS
 # or just double-click index.html in Finder/Explorer
 ```
 
+## Python implementation
+
+`tomography.py` is a standalone, dependency-light (numpy + scipy) implementation of the
+same two reconstruction methods, for use in notebooks, scripts, or analysis pipelines
+outside the browser. It exposes:
+
+```python
+from tomography import linear_tomography, maximum_likelihood_tomography, purity, \
+    von_neumann_entropy, linear_entropy, bell_fidelities
+
+rho_lin, N   = linear_tomography(counts)              # counts: 16 coincidence counts
+rho_ml, L    = maximum_likelihood_tomography(counts, N, rho_lin)
+```
+
+Install dependencies and run the built-in example:
+
+```bash
+pip install -r requirements.txt
+python3 tomography.py
+```
+
+Its output for the example data matches the web tool's linear-tomography result to 4
+decimal places, and its maximum-likelihood result matches to the reported precision
+using SciPy's Powell and BFGS optimizers (the web tool uses a hand-rolled Adam optimizer
+in JavaScript, since it has no SciPy to call into — both converge to the same optimum).
+
 ## Development
 
 Everything — math and UI — lives in the single `index.html` file:
