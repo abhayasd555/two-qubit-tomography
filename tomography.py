@@ -236,25 +236,37 @@ def bell_fidelities(rho: np.ndarray) -> dict[str, float]:
 # Example usage
 # ---------------------------------------------------------------------------
 
-if __name__ == "__main__":
-    # A representative set of 16 coincidence counts (same order as MEASUREMENT_BASIS).
-    example_counts = [
-        34749, 324, 35805, 444, 16324, 17521, 13441, 16901,
-        17932, 32028, 15132, 17238, 13171, 17170, 16722, 33586,
-    ]
+# A representative set of 16 coincidence counts (same order as MEASUREMENT_BASIS),
+# reused by --example and as the default in interactive mode.
+EXAMPLE_COUNTS = [
+    34749, 324, 35805, 444, 16324, 17521, 13441, 16901,
+    17932, 32028, 15132, 17238, 13171, 17170, 16722, 33586,
+]
 
+# Human-readable projection label for each of the 16 rows, e.g. "H|H", matching
+# the order of MEASUREMENT_BASIS.
+PROJECTION_LABELS = [
+    "H|H", "H|V", "V|V", "V|H",
+    "R|H", "R|V", "D|V", "D|H",
+    "D|R", "D|D", "R|D", "H|D",
+    "V|D", "V|L", "H|L", "R|L",
+]
+
+
+def print_report(counts) -> None:
+    """Run both reconstructions on `counts` and print a full report."""
     np.set_printoptions(precision=4, suppress=True)
 
-    rho_lin, N = linear_tomography(example_counts)
+    rho_lin, N = linear_tomography(counts)
     eigs_lin = np.sort(np.linalg.eigvalsh(rho_lin))[::-1]
-    print(f"N = {N:.0f} pairs\n")
+    print(f"\nN = {N:.0f} pairs\n")
     print("Linear tomography:")
     print(rho_lin)
     print(f"eigenvalues: {eigs_lin}")
-    print(f"Tr(rho^2)  : {purity(rho_lin):.4f}  "
-          f"({'PHYSICAL' if eigs_lin.min() > -1e-6 else 'NOT PHYSICAL'})\n")
+    physical = eigs_lin.min() > -1e-6
+    print(f"Tr(rho^2)  : {purity(rho_lin):.4f}  ({'PHYSICAL' if physical else 'NOT PHYSICAL'})\n")
 
-    rho_ml, L = maximum_likelihood_tomography(example_counts, N, rho_lin)
+    rho_ml, L = maximum_likelihood_tomography(counts, N, rho_lin)
     eigs_ml = np.sort(np.linalg.eigvalsh(rho_ml))[::-1]
     print("Maximum-likelihood tomography:")
     print(rho_ml)
@@ -263,4 +275,55 @@ if __name__ == "__main__":
     print(f"von Neumann S   : {von_neumann_entropy(rho_ml):.4f} bit")
     print(f"linear entropy  : {linear_entropy(rho_ml):.4f}")
     print(f"likelihood at optimum: {L:.2f}")
-    print(f"Bell-state fidelities: {bell_fidelities(rho_ml)}")
+    print("Bell-state fidelities:")
+    for name, f in bell_fidelities(rho_ml).items():
+        print(f"  {name:5s}: {f:.4f}")
+
+
+def _prompt_for_counts() -> list[float]:
+    print("Enter the 16 coincidence counts, one per projection setting.")
+    print("(Press Enter on the first prompt to load the built-in example instead.)\n")
+    counts = []
+    for i, label in enumerate(PROJECTION_LABELS, start=1):
+        raw = input(f"  {i:2d}) {label:6s} = ")
+        if i == 1 and raw.strip() == "":
+            print("\nUsing built-in example data.")
+            return list(EXAMPLE_COUNTS)
+        counts.append(float(raw))
+    return counts
+
+
+def _read_counts_file(path: str) -> list[float]:
+    text = open(path).read()
+    values = [float(v) for v in text.replace(",", " ").split()]
+    if len(values) != 16:
+        raise ValueError(f"expected 16 counts in {path}, found {len(values)}")
+    return values
+
+
+def main() -> None:
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Two-qubit polarization state tomography.")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--example", action="store_true", help="run on the built-in example data")
+    group.add_argument("--counts", type=float, nargs=16, metavar="N",
+                        help="the 16 coincidence counts, in MEASUREMENT_BASIS order")
+    group.add_argument("--file", type=str, metavar="PATH",
+                        help="text file containing 16 counts (whitespace or comma separated)")
+    args = parser.parse_args()
+
+    if args.example:
+        counts = EXAMPLE_COUNTS
+    elif args.counts is not None:
+        counts = args.counts
+    elif args.file is not None:
+        counts = _read_counts_file(args.file)
+    else:
+        counts = _prompt_for_counts()
+
+    print_report(counts)
+
+
+if __name__ == "__main__":
+    main()

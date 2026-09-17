@@ -78,11 +78,25 @@ rho_lin, N   = linear_tomography(counts)              # counts: 16 coincidence c
 rho_ml, L    = maximum_likelihood_tomography(counts, N, rho_lin)
 ```
 
-Install dependencies and run the built-in example:
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
+```
+
+Then run it interactively — it will prompt you for each of the 16 counts by
+projection label (press Enter on the first prompt to load the built-in example instead):
+
+```bash
 python3 tomography.py
+```
+
+Or skip the prompts by passing counts directly:
+
+```bash
+python3 tomography.py --example                    # built-in example data
+python3 tomography.py --counts 34749 324 35805 ...  # all 16 counts inline (space-separated)
+python3 tomography.py --file my_counts.txt          # 16 counts in a text file (whitespace or comma separated)
 ```
 
 Its output for the example data matches the web tool's linear-tomography result to 4
